@@ -137,7 +137,7 @@ BOARD_SUPPRESS_EMMC_WIPE                    := true
 TARGET_RECOVERY_DENSITY                     := hdpi
 
 # TWRP
-TW_THEME := portrait_hdpi
+TW_THEME                                    := portrait_hdpi
 DEVICE_RESOLUTION                           := 480x800
 TW_MAX_BRIGHTNESS                           := 255
 TW_CUSTOM_BATTERY_PATH                      := /sys/class/power_supply/battery
