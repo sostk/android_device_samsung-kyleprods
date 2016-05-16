@@ -134,7 +134,7 @@ BOARD_RECOVERY_HANDLES_MOUNT                := true
 BOARD_USES_MMCUTILS                         := true
 BOARD_USE_USB_MASS_STORAGE_SWITCH           := true
 BOARD_SUPPRESS_EMMC_WIPE                    := true
-TARGET_RECOVERY_DENSITY                     := hdpi
+TARGET_RECOVERY_DENSITY                     := potrait_hdpi
 
 # TWRP
 TW_THEME                                    := portrait_hdpi
