@@ -17,7 +17,7 @@ Only in b/bootable/recovery/uncrypt: uncrypt.c~
 diff -ur a/build/core/tasks/kernel.mk b/build/core/tasks/kernel.mk
 --- a/build/core/tasks/kernel.mk	2016-02-09 07:54:07.478025648 +0000
 +++ b/build/core/tasks/kernel.mk	2016-02-09 07:57:33.886025648 +0000
-@@ -178,7 +178,11 @@
+@@ -175,7 +175,11 @@
      ccache := $(strip $(wildcard $(ccache)))
  endif
  
