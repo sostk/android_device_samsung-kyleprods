@@ -1,3 +1,63 @@
+diff -ur a/frameworks/native/libs/gui/BufferQueueProducer.cpp b/frameworks/native/libs/gui/BufferQueueProducer.cpp
+--- a/frameworks/native/libs/gui/BufferQueueProducer.cpp	2016-02-09 07:51:36.702025648 +0000
++++ b/frameworks/native/libs/gui/BufferQueueProducer.cpp	2016-02-09 07:57:33.922025648 +0000
+@@ -204,7 +204,12 @@
+             const int newUndequeuedCount =
+                 maxBufferCount - (dequeuedCount + 1);
+             const int minUndequeuedCount =
++#ifdef HAWAII_HWC
++                // HACK: for some reason, we need to reduce min undequeue for screen recording
++                mCore->getMinUndequeuedBufferCountLocked(false);
++#else
+                 mCore->getMinUndequeuedBufferCountLocked(async);
++#endif
+             if (newUndequeuedCount < minUndequeuedCount) {
+                 BQ_LOGE("%s: min undequeued buffer count (%d) exceeded "
+                         "(dequeued=%d undequeued=%d)",
+diff -ur a/frameworks/native/libs/gui/SensorEventQueue.cpp b/frameworks/native/libs/gui/SensorEventQueue.cpp
+--- a/frameworks/native/libs/gui/SensorEventQueue.cpp	2016-02-09 07:51:36.714025648 +0000
++++ b/frameworks/native/libs/gui/SensorEventQueue.cpp	2016-02-09 07:57:33.922025648 +0000
+@@ -130,8 +130,12 @@
+ 
+ status_t SensorEventQueue::enableSensor(int32_t handle, int32_t samplingPeriodUs,
+                                         int maxBatchReportLatencyUs, int reservedFlags) const {
+-    return mSensorEventConnection->enableDisable(handle, true, us2ns(samplingPeriodUs),
++    status_t err = mSensorEventConnection->enableDisable(handle, true, us2ns(samplingPeriodUs),
+                                                  us2ns(maxBatchReportLatencyUs), reservedFlags);
++    if (err == NO_ERROR) {
++        mSensorEventConnection->setEventRate(handle, us2ns(samplingPeriodUs));
++    }
++    return err;
+ }
+ 
+ status_t SensorEventQueue::flush() const {
+diff -ur a/frameworks/native/libs/gui/SurfaceComposerClient.cpp b/frameworks/native/libs/gui/SurfaceComposerClient.cpp
+--- a/frameworks/native/libs/gui/SurfaceComposerClient.cpp	2016-02-09 07:51:36.702025648 +0000
++++ b/frameworks/native/libs/gui/SurfaceComposerClient.cpp	2016-02-09 07:57:33.922025648 +0000
+@@ -838,7 +838,7 @@
+         uint32_t minLayerZ, uint32_t maxLayerZ, bool useIdentityTransform) {
+     sp<ISurfaceComposer> s(ComposerService::getComposerService());
+     if (s == NULL) return NO_INIT;
+-#ifdef USE_MHEAP_SCREENSHOT
++#if defined(USE_MHEAP_SCREENSHOT) && !defined(HAWAII_HWC)
+     int format = 0;
+     producer->query(NATIVE_WINDOW_FORMAT,&format);
+     if (format == PIXEL_FORMAT_RGBA_8888) {
+diff -ur a/frameworks/native/services/surfaceflinger/SurfaceFlinger.cpp b/frameworks/native/services/surfaceflinger/SurfaceFlinger.cpp
+--- a/frameworks/native/services/surfaceflinger/SurfaceFlinger.cpp	2016-02-09 07:51:36.770025648 +0000
++++ b/frameworks/native/services/surfaceflinger/SurfaceFlinger.cpp	2016-02-09 07:57:33.926025648 +0000
+@@ -3748,6 +3748,11 @@
+ {
+     ATRACE_CALL();
+ 
++// Rotation artifact problems when useReadPixels is false
++#ifdef HAWAII_HWC
++    useReadPixels = true;
++#endif
++
+     // get screen geometry
+     const uint32_t hw_w = hw->getWidth();
+     const uint32_t hw_h = hw->getHeight();
 diff -ur a/bootable/recovery/uncrypt/uncrypt.c b/bootable/recovery/uncrypt/uncrypt.c
 --- a/bootable/recovery/uncrypt/uncrypt.c	2015-04-15 01:29:49.000000000 +0545
 +++ b/bootable/recovery/uncrypt/uncrypt.c	2016-05-16 21:45:03.412136845 +0545
@@ -768,63 +828,3 @@ diff -ur a/frameworks/av/media/libstagefright/OMXCodec.cpp b/frameworks/av/media
 +            }
          }
      }
-diff -ur a/frameworks/native/libs/gui/BufferQueueProducer.cpp b/frameworks/native/libs/gui/BufferQueueProducer.cpp
---- a/frameworks/native/libs/gui/BufferQueueProducer.cpp	2016-02-09 07:51:36.702025648 +0000
-+++ b/frameworks/native/libs/gui/BufferQueueProducer.cpp	2016-02-09 07:57:33.922025648 +0000
-@@ -204,7 +204,12 @@
-             const int newUndequeuedCount =
-                 maxBufferCount - (dequeuedCount + 1);
-             const int minUndequeuedCount =
-+#ifdef HAWAII_HWC
-+                // HACK: for some reason, we need to reduce min undequeue for screen recording
-+                mCore->getMinUndequeuedBufferCountLocked(false);
-+#else
-                 mCore->getMinUndequeuedBufferCountLocked(async);
-+#endif
-             if (newUndequeuedCount < minUndequeuedCount) {
-                 BQ_LOGE("%s: min undequeued buffer count (%d) exceeded "
-                         "(dequeued=%d undequeued=%d)",
-diff -ur a/frameworks/native/libs/gui/SensorEventQueue.cpp b/frameworks/native/libs/gui/SensorEventQueue.cpp
---- a/frameworks/native/libs/gui/SensorEventQueue.cpp	2016-02-09 07:51:36.714025648 +0000
-+++ b/frameworks/native/libs/gui/SensorEventQueue.cpp	2016-02-09 07:57:33.922025648 +0000
-@@ -130,8 +130,12 @@
- 
- status_t SensorEventQueue::enableSensor(int32_t handle, int32_t samplingPeriodUs,
-                                         int maxBatchReportLatencyUs, int reservedFlags) const {
--    return mSensorEventConnection->enableDisable(handle, true, us2ns(samplingPeriodUs),
-+    status_t err = mSensorEventConnection->enableDisable(handle, true, us2ns(samplingPeriodUs),
-                                                  us2ns(maxBatchReportLatencyUs), reservedFlags);
-+    if (err == NO_ERROR) {
-+        mSensorEventConnection->setEventRate(handle, us2ns(samplingPeriodUs));
-+    }
-+    return err;
- }
- 
- status_t SensorEventQueue::flush() const {
-diff -ur a/frameworks/native/libs/gui/SurfaceComposerClient.cpp b/frameworks/native/libs/gui/SurfaceComposerClient.cpp
---- a/frameworks/native/libs/gui/SurfaceComposerClient.cpp	2016-02-09 07:51:36.702025648 +0000
-+++ b/frameworks/native/libs/gui/SurfaceComposerClient.cpp	2016-02-09 07:57:33.922025648 +0000
-@@ -838,7 +838,7 @@
-         uint32_t minLayerZ, uint32_t maxLayerZ, bool useIdentityTransform) {
-     sp<ISurfaceComposer> s(ComposerService::getComposerService());
-     if (s == NULL) return NO_INIT;
--#ifdef USE_MHEAP_SCREENSHOT
-+#if defined(USE_MHEAP_SCREENSHOT) && !defined(HAWAII_HWC)
-     int format = 0;
-     producer->query(NATIVE_WINDOW_FORMAT,&format);
-     if (format == PIXEL_FORMAT_RGBA_8888) {
-diff -ur a/frameworks/native/services/surfaceflinger/SurfaceFlinger.cpp b/frameworks/native/services/surfaceflinger/SurfaceFlinger.cpp
---- a/frameworks/native/services/surfaceflinger/SurfaceFlinger.cpp	2016-02-09 07:51:36.770025648 +0000
-+++ b/frameworks/native/services/surfaceflinger/SurfaceFlinger.cpp	2016-02-09 07:57:33.926025648 +0000
-@@ -3748,6 +3748,11 @@
- {
-     ATRACE_CALL();
- 
-+// Rotation artifact problems when useReadPixels is false
-+#ifdef HAWAII_HWC
-+    useReadPixels = true;
-+#endif
-+
-     // get screen geometry
-     const uint32_t hw_w = hw->getWidth();
-     const uint32_t hw_h = hw->getHeight();
